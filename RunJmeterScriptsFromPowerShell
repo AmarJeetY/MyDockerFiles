@@ -1,0 +1,57 @@
+# Dockerfile for running Jmeter scripts from powershell script
+
+# Get docker image with powershell installed. Below is ubuntu linux image.
+FROM mcr.microsoft.com/powershell:latest
+ 
+# Metadata indicating an image version.
+LABEL version="1.0"
+
+# Install OpenJDK-8, Wget utilities
+RUN apt-get update && \
+    apt-get install -y openjdk-8-jdk && \
+    apt-get install -y ant && \
+	apt-get install -y wget && \
+    apt-get clean;
+
+# Fix certificate issues
+RUN apt-get update && \
+    apt-get install ca-certificates-java && \
+    apt-get clean && \
+    update-ca-certificates -f;
+
+# Setup JAVA_HOME -- useful for docker commandline
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+RUN export JAVA_HOME
+
+# Install Jmeter
+RUN mkdir /jmeter \
+    && cd /jmeter/ \
+    && wget https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.2.tgz \
+    && tar -xvzf apache-jmeter-5.2.tgz \
+    && rm apache-jmeter-5.2.tgz
+
+# Set Jmeter and powershell Home Directory
+ENV JMETER_HOME /jmeter/apache-jmeter-5.2/
+ENV PWSL /usr/bin/pwsh/
+
+# Add Jmeter and powersjell to the Path
+ENV PATH $JMETER_HOME/bin:$PATH
+ENV PATH $PWSL:$PATH
+
+# Create directories for copying required programs and data files
+RUN mkdir /usr/src/app
+WORKDIR /usr/src/app
+
+# Copy all programs and data required to run Jmeter scripts from host to container.
+COPY . .
+
+#Set working directory to the folder where PowerShell scripts are copied.
+WORKDIR /usr/src/app/NewTests/PowershellScripts
+
+##################### Run Tests ####################
+
+# Initialise powershell 
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Create folders
+CMD ["./CreateFolders.ps1"]
