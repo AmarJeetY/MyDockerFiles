@@ -22,6 +22,8 @@ RUN C:\Users\Public\vs_buildtools.exe --quiet --wait --norestart --nocache `
 # Set path of the development environment in docker 
 ENV C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\Common7\Tools
 ENV C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin
+ARG TAGNAME=""
+ENV testfilter=$TAGNAME
 
 # Set work directory
 WORKDIR C:\Users\Public
@@ -40,4 +42,4 @@ RUN SpecRun.exe register AAAAAA== "Your Company PLC" `
 	|| IF "%ERRORLEVEL%"=="520" EXIT 0
 
 # Run tests
-RUN SpecRun.exe run Default.srprofile /baseFolder:"C:\Users\Public\YourProject\bin\release"
+RUN SpecRun.exe run Default.srprofile /baseFolder:"C:\Users\Public\YourProject\bin\release" /filter:%testfilter%
