@@ -1,0 +1,37 @@
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1.102
+WORKDIR /app
+COPY . ./
+
+# Import SSL certificate text sent by JenkinsFile into Dockerfile in arguments
+ARG ROOTCERT
+ARG INTERCERT
+
+# Insert raw root and inter certificate text into respective files.
+# Manipulate text in the file as its format does not match with
+# expected standard SSL certificate format.
+
+RUN echo "${ROOTCERT}" > /usr/local/share/ca-certificates/root.crt
+RUN sed -i "s|BEGINCERTIFICATE-----|&\n|" /usr/local/share/ca-certificates/root.crt
+RUN sed -i "s|-----ENDCERTIFICATE|\n&|" /usr/local/share/ca-certificates/root.crt
+RUN sed -i "s|BEGINCERTIFICATE|BEGIN CERTIFICATE|g" /usr/local/share/ca-certificates/root.crt
+RUN sed -i "s|ENDCERTIFICATE|END CERTIFICATE|g" /usr/local/share/ca-certificates/root.crt
+
+RUN echo "${INTERCERT}" > /usr/local/share/ca-certificates/inter.crt
+RUN sed -i "s|BEGINCERTIFICATE-----|&\n|" /usr/local/share/ca-certificates/inter.crt
+RUN sed -i "s|-----ENDCERTIFICATE|\n&|" /usr/local/share/ca-certificates/inter.crt
+RUN sed -i "s|BEGINCERTIFICATE|BEGIN CERTIFICATE|g" /usr/local/share/ca-certificates/inter.crt
+RUN sed -i "s|ENDCERTIFICATE|END CERTIFICATE|g" /usr/local/share/ca-certificates/inter.crt
+
+
+# Update SSL certificate to certificate store
+RUN update-ca-certificates
+
+# NuGet.Config needs to be copied to a specific location so that dotnet can use it
+# See https://github.com/dotnet/sdk/issues/7875 
+# Remember to get the camel casing as specified here
+COPY ./NuGet.config /root/.nuget/NuGet/NuGet.Config
+
+# Restore nuget packages for solution, build solution and run tests
+RUN dotnet restore 
+RUN dotnet build -c Release
+ENTRYPOINT ["dotnet", "test", "-c", "Release", "--verbosity", "normal"]
